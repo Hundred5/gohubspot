@@ -189,15 +189,29 @@ func (c *HubspotClient) Do(req *http.Request, v interface{}) error {
 	return nil
 }
 
+type HubspotError struct {
+	StatusCode    int
+	Message       string `json:"message"`
+	Status        string `json:"status"`
+	CorrelationID string `json:"correlationID"`
+	RequestID     string `json:"requestID"`
+}
+
+func (e HubspotError) Error() string {
+	return e.Message
+}
+
 func CheckResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
 
-	data, err := ioutil.ReadAll(r.Body)
+	var hubspotErr HubspotError
+	err := json.NewDecoder(r.Body).Decode(&hubspotErr)
 	if err != nil {
-		return fmt.Errorf("Server error %d \n can not read body: %v", r.StatusCode, err)
+		return err
 	}
 
-	return fmt.Errorf("Server error %d \n Body: %v", r.StatusCode, string(data[:]))
+	hubspotErr.StatusCode = r.StatusCode
+	return hubspotErr
 }
